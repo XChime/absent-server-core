@@ -48,3 +48,8 @@
 [prune]
   go-tests = true
   unused-packages = true
+  
+ [metadata.heroku]
+  root-package = "absensi-server"
+  go-version = "1.12"
+  install = [ "./..." ]
