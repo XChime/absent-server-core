@@ -30,8 +30,15 @@ func initRoute() {
 	}
 	router := mux.NewRouter()
 	router.HandleFunc("/", homeHandler)
+	//employee
 	router.HandleFunc("/login/employee", employeeHandler).Methods("POST")
 	router.HandleFunc("/create/employee", employeeCreateHandler).Methods("POST")
+	router.HandleFunc("/reset/employee", employeeResetHandler).Methods("POST")
+	router.HandleFunc("/change/employee/password", employeeChangePassHandler).Methods("POST")
+
+	//machine
+	//TODO adding machine
+
 	// Handle all preflight request
 	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -70,8 +77,39 @@ func employeeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	nik := r.FormValue("nik")
 	password := r.FormValue("password")
+	deviceid := r.FormValue("device")
 
-	emp := user.EmpHubLogin(nik, password)
+	emp := user.EmpHubLogin(nik, password, deviceid)
+	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func employeeChangePassHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	nik := r.FormValue("nik")
+	password := r.FormValue("password")
+
+	emp := user.ChangePasswordHub(nik, password)
+	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func employeeResetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	nik := r.FormValue("nik")
+	token := r.FormValue("token")
+
+	emp := user.ResetAccountHub(nik, token)
 	var homeJson = string(data.MustMarshal(emp))
 	_, _ = fmt.Fprint(w, homeJson)
 }

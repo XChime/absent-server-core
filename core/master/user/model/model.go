@@ -10,7 +10,8 @@ type Logined struct {
 	Token string
 }
 type LoginData struct {
-	NIK    string
-	Divisi int
-	Jadwal string
+	NIK        string
+	Divisi     int
+	Jadwal     string
+	DeviceHash string
 }
