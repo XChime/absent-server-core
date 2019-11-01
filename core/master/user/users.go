@@ -122,29 +122,27 @@ func Login(nik string, password string, deviceId string) (bool, interface{}, str
 	devicehash := ""
 	var deviceids sql.NullString
 	var jadwal sql.NullString
+	name := ""
+	divisiname := ""
 
 	if common.IsPasswordAndHashOk([]byte(password), passwordHash) {
-		sqlLogin := `SELECT t1."NIK",t2."Divisi",t2."Jadwal",t1."DeviceID" FROM "UserLogin" t1 INNER JOIN
-    "ListKaryawan" t2 ON t1."NIK" = t2."NIK" WHERE t1."Password" = $1 AND t1."NIK" = $2`
+		sqlLogin := `SELECT t1."NIK",t2."Divisi",t2."Jadwal",t1."DeviceID" ,t2."Nama",t3."NamaDivisi" FROM "UserLogin" t1 INNER JOIN
+    "ListKaryawan" t2 ON t1."NIK" = t2."NIK" INNER JOIN "ListDivisi" t3 ON t2."Divisi" = t3."ID" 
+	WHERE t1."Password" = $1 AND t1."NIK" = $2`
 
-		err := con.QueryRow(sqlLogin, passwordHash, nik).Scan(&niks, &divisi, &jadwal, &deviceids)
+		err := con.QueryRow(sqlLogin, passwordHash, nik).Scan(&niks, &divisi, &jadwal, &deviceids, &name, &divisiname)
 
 		if err != nil {
 			return true, nil, err.Error()
 		}
 
 		if deviceids.Valid {
-			if divisi == 1 || divisi == 2 {
+			if common.IsPasswordAndHashOk([]byte(deviceids.String), common.HashAndSalt([]byte(deviceId))) {
 				devicehash = common.HashAndSalt([]byte(deviceids.String))
 			} else {
-				if common.IsPasswordAndHashOk([]byte(deviceids.String), common.HashAndSalt([]byte(deviceId))) {
-					devicehash = common.HashAndSalt([]byte(deviceids.String))
-				} else {
-					return true, nil, "Your account has login on another device,please call Personalia" +
-						" or IT department to reset your account"
-				}
+				return true, nil, "Your account has login on another device,please call Personalia" +
+					" or IT department to reset your account"
 			}
-
 		} else {
 			var devid sql.NullString
 			sqlUpdateDevice := `UPDATE "UserLogin" SET "DeviceID" = $1 WHERE "NIK" = $2 RETURNING "DeviceID"`
@@ -157,6 +155,8 @@ func Login(nik string, password string, deviceId string) (bool, interface{}, str
 
 		tokenizer := model.LoginData{
 			NIK:        niks,
+			Nama:       name,
+			DivisiName: divisiname,
 			Divisi:     divisi,
 			Jadwal:     jadwal.String,
 			DeviceHash: devicehash,
@@ -168,6 +168,65 @@ func Login(nik string, password string, deviceId string) (bool, interface{}, str
 
 	}
 	return true, nil, "UNAuthorized"
+}
+func LoginAdmin(nik string, password string) (bool, interface{}, string) {
+	passwordHash := getPassword(nik)
+	niks := ""
+	divisi := 0
+	name := ""
+	divisiname := ""
+	if common.IsPasswordAndHashOk([]byte(password), passwordHash) {
+		sqlLogin := `SELECT t1."NIK",t2."Divisi" ,t2."Nama",t3."NamaDivisi" FROM "UserLogin" t1 INNER JOIN
+    "ListKaryawan" t2 ON t1."NIK" = t2."NIK" INNER JOIN "ListDivisi" t3 ON t2."Divisi" = t3."ID" 
+	WHERE t1."Password" = $1 AND t1."NIK" = $2 AND (t2."Divisi" = 1 OR t2."Divisi" = 2)`
+
+		err := con.QueryRow(sqlLogin, passwordHash, nik).Scan(&niks, &divisi, &name, &divisiname)
+
+		if err != nil {
+			fmt.Println(err.Error())
+			return true, nil, "UnAuthorized"
+		}
+
+		tokenizer := model.AdminData{
+			IsAdmin:    true,
+			NIK:        niks,
+			Nama:       name,
+			DivisiName: divisiname,
+			Divisi:     divisi,
+		}
+		return false, tokenizer, "Admin found"
+	}
+	return true, nil, ""
+}
+
+func GetEmployeeByDivision(div string) (interface{}, string) {
+	sqlS := `SELECT "NIK","Nama","Divisi","NamaDivisi" FROM "ListKaryawan" t1 INNER JOIN "ListDivisi" t2 ON t1."Divisi" = t2."ID" WHERE "Divisi" = $1`
+	rows, err := con.Query(sqlS, div)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, "Not found!"
+	}
+	listed := model.EmployeList{}
+	for rows.Next() {
+		var nik, name, namadiv string
+		var div int
+		err = rows.Scan(&nik, &name, &div, &namadiv)
+		if err != nil {
+			return nil, err.Error()
+		}
+		emplist := model.EmployeeListDetail{
+			NIK:        nik,
+			Nama:       name,
+			DivisiName: namadiv,
+			Divisi:     div,
+		}
+		listed.List = append(listed.List, emplist)
+	}
+	if len(listed.List) != 0 {
+		return listed, "Success"
+	}
+
+	return nil, "ERROR !"
 }
 
 func getPassword(nik string) string {
