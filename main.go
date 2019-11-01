@@ -1,6 +1,8 @@
 package main
 
 import (
+	"absensi-server/core/action/schedule"
+	"absensi-server/core/master/machine"
 	"absensi-server/core/master/user"
 	"absensi-server/libs/database"
 	"absensi-server/util/data"
@@ -10,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -30,8 +33,48 @@ func initRoute() {
 	}
 	router := mux.NewRouter()
 	router.HandleFunc("/", homeHandler)
+	router.HandleFunc("/login/administrator", administratorHandler).Methods("POST")
+	//employee
 	router.HandleFunc("/login/employee", employeeHandler).Methods("POST")
 	router.HandleFunc("/create/employee", employeeCreateHandler).Methods("POST")
+	router.HandleFunc("/reset/employee", employeeResetHandler).Methods("POST")
+	router.HandleFunc("/change/employee/password", employeeChangePassHandler).Methods("POST")
+	//TODO
+	router.HandleFunc("/employee/div/{division}", employeeByDivision).Methods("GET")
+
+	//machine
+	router.HandleFunc("/login/machine", machineLoginHandler).Methods("POST")
+
+	//Schedule
+	//Create schedule for division
+	router.HandleFunc("/employee/schedule/create", scheduleCreateHandler).Methods("POST")
+	//Attach schedule to specific employee
+	router.HandleFunc("/employee/schedule/attach", scheduleAttachHandler).Methods("POST")
+	//Update schedule
+	router.HandleFunc("/employee/schedule/update", scheduleUpdateHandler).Methods("POST")
+	//Show specific employee schedule
+	router.HandleFunc("/employee/schedule", scheduleEmployeeHandler).Methods("POST")
+	//Show specific schedule by id
+	router.HandleFunc("/employee/schedule/{id}", scheduleEmployeeById).Methods("GET")
+	//Show schedule by division which is valid / not (GRANTED / WAITING)
+	router.HandleFunc("/employee/schedule/{div}/{grant}", scheduleEmployeeByDiv).Methods("GET")
+
+	//Overtime
+	//Create overtime //TODO
+	//Update overtime //TODO
+	//Granting overtime //TODO
+
+	//OutDetails
+	//Create OutDetail //TODO
+	//Update OutDetail //TODO
+	//Granting OutDetails //TODO
+
+	//Absent
+	//Absent Request//TODO
+	//Request OUT //TODO
+	//Request INF //TODO
+	//Changing Overtime //TODO
+
 	// Handle all preflight request
 	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -60,6 +103,30 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	var homeJson = string(data.MustMarshal(home))
 	_, _ = fmt.Fprint(w, homeJson)
 }
+func employeeByDivision(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	params := mux.Vars(r)
+	div := params["division"]
+
+	emp := user.EmployeeByDivison(div)
+	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+func administratorHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	nik := r.FormValue("nik")
+	password := r.FormValue("password")
+
+	emp := user.EmpLoginAdminHub(nik, password)
+	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
 
 func employeeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -70,8 +137,39 @@ func employeeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	nik := r.FormValue("nik")
 	password := r.FormValue("password")
+	deviceid := r.FormValue("device")
 
-	emp := user.EmpHubLogin(nik, password)
+	emp := user.EmpHubLogin(nik, password, deviceid)
+	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func employeeChangePassHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	nik := r.FormValue("nik")
+	password := r.FormValue("password")
+
+	emp := user.ChangePasswordHub(nik, password)
+	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func employeeResetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	nik := r.FormValue("nik")
+	token := r.FormValue("token")
+
+	emp := user.ResetAccountHub(nik, token)
 	var homeJson = string(data.MustMarshal(emp))
 	_, _ = fmt.Fprint(w, homeJson)
 }
@@ -89,6 +187,104 @@ func employeeCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	emp := user.CreateHub(nameCreate, divisi, token)
 	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+//Machine section
+
+func machineLoginHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	sharecode := r.FormValue("sharecode")
+	mch := machine.LoginMachineHub(sharecode)
+	var homeJson = string(data.MustMarshal(mch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+//Schedule section
+func scheduleCreateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	divisi := r.FormValue("divisi")
+	mesg := r.FormValue("message")
+	datas := r.FormValue("data")
+	sch := schedule.CreateScheduleHub(token, divisi, mesg, datas)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func scheduleAttachHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	idsch := r.FormValue("schedule")
+	nik := r.FormValue("employee")
+	sch := schedule.ScheduleAttachHub(idsch, token, nik)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func scheduleUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	idsch := r.FormValue("schedule")
+	message := r.FormValue("message")
+	datas := r.FormValue("data")
+	grant := r.FormValue("grant")
+	sch := schedule.ScheduleUpdateHub(idsch, token, message, datas, grant)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func scheduleEmployeeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	sch := schedule.ReadEmployeeScheduleHub(token)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+func scheduleEmployeeById(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	params := mux.Vars(r)
+	id := params["id"]
+	sch := schedule.ReadSchedulebyIdHub(id)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+func scheduleEmployeeByDiv(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	params := mux.Vars(r)
+	div := params["div"]
+	grant := params["grant"]
+	divI, _ := strconv.Atoi(div)
+	sch := schedule.ScheduleByDivisionHub(divI, grant)
+	var homeJson = string(data.MustMarshal(sch))
 	_, _ = fmt.Fprint(w, homeJson)
 }
 

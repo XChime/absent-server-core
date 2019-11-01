@@ -4,12 +4,39 @@ import (
 	"absensi-server/libs/database"
 	"database/sql"
 	"fmt"
+	"math/rand"
+	"time"
 )
 
 var con *sql.DB
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func init() {
 	con = database.Connect()
+}
+
+func RandomScheduleID() string {
+	id := GetRandomString(10)
+	if IsScheduleIDNone(id) {
+		return id
+	} else {
+		RandomScheduleID()
+	}
+	return ""
+}
+func IsScheduleIDNone(id string) bool {
+	ids := ""
+	sqlS := `SELECT "ID" FROM "ListJadwal" WHERE "ID" = $1`
+	row := con.QueryRow(sqlS, id)
+	switch err := row.Scan(&ids); err {
+	case sql.ErrNoRows:
+		return true
+	case nil:
+		return false
+	default:
+		fmt.Println(err)
+		return true
+	}
 }
 
 func CheckLastNik() string {
@@ -45,6 +72,12 @@ func IsNIKAdmin(nik string) bool {
 	}
 }
 
-func IsNikAvailable() bool {
-	return false
+func GetRandomString(n int) string {
+	source := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(source)
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[r.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

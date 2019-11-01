@@ -6,11 +6,30 @@ type CreatedEmployee struct {
 	Message         string
 }
 
-type Logined struct {
-	Token string
+//For admin application
+type AdminData struct {
+	IsAdmin    bool
+	NIK        string
+	Nama       string
+	DivisiName string
+	Divisi     int
 }
+
+//For standard account
 type LoginData struct {
-	NIK    string
-	Divisi int
-	Jadwal string
+	NIK        string
+	Nama       string
+	DivisiName string
+	Divisi     int
+	Jadwal     string
+	DeviceHash string
+}
+type EmployeList struct {
+	List []EmployeeListDetail
+}
+type EmployeeListDetail struct {
+	NIK        string
+	Nama       string
+	DivisiName string
+	Divisi     int
 }
