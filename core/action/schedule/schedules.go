@@ -105,7 +105,7 @@ func ReadEmployeeSchedule(nik string) (interface{}, string) {
 	}
 
 	bytes := []byte(data)
-	var j model.JSONSchedule
+	var j model.JSONScheduleEmployee
 	errs := json.Unmarshal(bytes, &j)
 	if errs != nil {
 		return nil, errs.Error()
@@ -113,6 +113,8 @@ func ReadEmployeeSchedule(nik string) (interface{}, string) {
 
 	if len(j.Schedule) != 0 {
 		for i := 0; i < len(j.Schedule); i++ {
+			overtime := ReadOvertime(j.Schedule[i].Overtime, j.Schedule[i].Date)
+			j.Schedule[i].OvertimeDetail = overtime
 			in, out := readShiftTime(j.Schedule[i].Shift)
 			j.Schedule[i].InTime = in.Format("3:04 PM")
 			j.Schedule[i].OutTime = out.Format("3:04 PM")
@@ -150,9 +152,9 @@ func ScheduleById(id string) (interface{}, string) {
 	return nil, "ID Not found"
 }
 func ScheduleDivison(div int, grant string) (interface{}, string) {
-	var ids, divisi, message, data string
+	var ids, divisi, message string
 	var assginee, validator sql.NullString
-	sqlS := `SELECT "ID","Divisi","Assignee","Validator","Message","Data" FROM "ListJadwal"
+	sqlS := `SELECT "ID","Divisi","Assignee","Validator","Message" FROM "ListJadwal"
 			WHERE "Divisi" = $1 AND "Status" = $2`
 	rows, err := con.Query(sqlS, div, grant)
 	if err != nil {
@@ -161,29 +163,14 @@ func ScheduleDivison(div int, grant string) (interface{}, string) {
 	}
 	var k model.ScheduleDivision
 	for rows.Next() {
-		err = rows.Scan(&ids, &divisi, &assginee, &validator, &message, &data)
-		bytes := []byte(data)
+		err = rows.Scan(&ids, &divisi, &assginee, &validator, &message)
 		var j model.ScheduleList
-		errs := json.Unmarshal(bytes, &j)
-		if errs != nil {
-			return nil, errs.Error()
-		}
 		j.Assignee = assginee.String
 		j.Validator = validator.String
 		divv, _ := strconv.Atoi(divisi)
 		j.Division = divv
 		j.ID = ids
 		j.Title = message
-
-		if assginee.Valid || validator.Valid {
-			if len(j.Schedule) != 0 {
-				for i := 0; i < len(j.Schedule); i++ {
-					in, out := readShiftTime(j.Schedule[i].Shift)
-					j.Schedule[i].InTime = in.Format("3:04 PM")
-					j.Schedule[i].OutTime = out.Format("3:04 PM")
-				}
-			}
-		}
 		k.List = append(k.List, j)
 	}
 
@@ -191,6 +178,31 @@ func ScheduleDivison(div int, grant string) (interface{}, string) {
 		return k, "Success"
 	}
 	return nil, "No List"
+}
+func ReadOvertime(overtime string, date string) interface{} {
+	var offset int
+	var validator, message string
+	var dates time.Time
+	sqlS := `SELECT "Offset","DateIssued","Validator","Message" FROM "ListOvertime" WHERE "ID" = $1 AND "Status" = 'GRANTED'`
+	err := con.QueryRow(sqlS, overtime).Scan(&offset, &dates, &validator, &message)
+	if err != nil {
+		fmt.Println(overtime + " -> " + err.Error())
+		return nil
+	}
+	dateE := dates.Format("2006-01-02")
+	expired := true
+	if dateE == date {
+		expired = false
+	}
+	over := model.OvertimeData{
+		ID:         overtime,
+		Offset:     offset,
+		DateIssued: dateE,
+		Validator:  validator,
+		Message:    message,
+		Expired:    expired,
+	}
+	return over
 }
 
 func readShiftTime(shift int) (time.Time, time.Time) {

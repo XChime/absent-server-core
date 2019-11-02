@@ -1,6 +1,7 @@
 package main
 
 import (
+	"absensi-server/core/action/overtime"
 	"absensi-server/core/action/schedule"
 	"absensi-server/core/master/machine"
 	"absensi-server/core/master/user"
@@ -60,9 +61,12 @@ func initRoute() {
 	router.HandleFunc("/employee/schedule/{div}/{grant}", scheduleEmployeeByDiv).Methods("GET")
 
 	//Overtime
-	//Create overtime //TODO
-	//Update overtime //TODO
-	//Granting overtime //TODO
+	//Create overtime
+	router.HandleFunc("/overtime/create", createOvertimeHandler).Methods("POST")
+	//Update overtime
+	router.HandleFunc("/overtime/update", updateOvertimeHandler).Methods("POST")
+	//List overtime
+	router.HandleFunc("/overtime/list/{div}/{grant}", listOvertimeDivision).Methods("GET")
 
 	//OutDetails
 	//Create OutDetail //TODO
@@ -286,6 +290,60 @@ func scheduleEmployeeByDiv(w http.ResponseWriter, r *http.Request) {
 	sch := schedule.ScheduleByDivisionHub(divI, grant)
 	var homeJson = string(data.MustMarshal(sch))
 	_, _ = fmt.Fprint(w, homeJson)
+}
+
+/*OVERTIME
+FUNCTION*/
+func createOvertimeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	offset := r.FormValue("offset")
+	message := r.FormValue("message")
+	divisi := r.FormValue("division")
+	offsetI, _ := strconv.Atoi(offset)
+	divisiI, _ := strconv.Atoi(divisi)
+	sch := overtime.CreateOvertimeHub(token, offsetI, message, divisiI)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func updateOvertimeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	id := r.FormValue("overtime")
+	offset := r.FormValue("offset")
+	message := r.FormValue("message")
+	divisi := r.FormValue("division")
+	status := r.FormValue("status")
+	offsetI, _ := strconv.Atoi(offset)
+	divisiI, _ := strconv.Atoi(divisi)
+	sch := overtime.UpdateOvertimeHub(token, id, offsetI, message, divisiI, status)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func listOvertimeDivision(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	params := mux.Vars(r)
+	div := params["div"]
+	grant := params["grant"]
+	divI, _ := strconv.Atoi(div)
+	sch := overtime.ReadOvertimeListHub(divI, grant)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+
 }
 
 func LogConsoleHttpReq(r *http.Request) {

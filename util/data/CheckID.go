@@ -39,6 +39,30 @@ func IsScheduleIDNone(id string) bool {
 	}
 }
 
+func RandomOvertimeID() string {
+	id := GetRandomString(8)
+	if IsOvertimeIDNone(id) {
+		return id
+	} else {
+		RandomOvertimeID()
+	}
+	return ""
+}
+func IsOvertimeIDNone(id string) bool {
+	ids := ""
+	sqlS := `SELECT "ID" FROM "ListJadwal" WHERE "ID" = $1`
+	row := con.QueryRow(sqlS, id)
+	switch err := row.Scan(&ids); err {
+	case sql.ErrNoRows:
+		return true
+	case nil:
+		return false
+	default:
+		fmt.Println(err)
+		return true
+	}
+}
+
 func CheckLastNik() string {
 	sqlStatement := `SELECT "NIK" FROM "ListKaryawan" ORDER BY "NIK" DESC LIMIT 1`
 	var nik string
