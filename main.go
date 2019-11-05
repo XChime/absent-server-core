@@ -1,6 +1,7 @@
 package main
 
 import (
+	"absensi-server/core/action/absent"
 	"absensi-server/core/action/overtime"
 	"absensi-server/core/action/schedule"
 	"absensi-server/core/master/machine"
@@ -40,11 +41,11 @@ func initRoute() {
 	router.HandleFunc("/create/employee", employeeCreateHandler).Methods("POST")
 	router.HandleFunc("/reset/employee", employeeResetHandler).Methods("POST")
 	router.HandleFunc("/change/employee/password", employeeChangePassHandler).Methods("POST")
-	//TODO
 	router.HandleFunc("/employee/div/{division}", employeeByDivision).Methods("GET")
 
 	//machine
 	router.HandleFunc("/login/machine", machineLoginHandler).Methods("POST")
+	router.HandleFunc("/machine/request", machineRequestCodeHandler).Methods("POST")
 
 	//Schedule
 	//Create schedule for division
@@ -70,14 +71,19 @@ func initRoute() {
 
 	//OutDetails
 	//Create OutDetail //TODO
+	router.HandleFunc("/detail/out/create", nil).Methods("POST")
 	//Update OutDetail //TODO
-	//Granting OutDetails //TODO
+	router.HandleFunc("/detail/out/update", nil).Methods("POST")
+	//Show Outdetail by division (GRANTED / WAITING)
+	router.HandleFunc("/detail/out/show/{div}/{grant}", nil).Methods("POST")
 
 	//Absent
-	//Absent Request//TODO
-	//Request OUT //TODO
-	//Request INF //TODO
-	//Changing Overtime //TODO
+	//Absent Request
+	router.HandleFunc("/absent/request", requestAbsentHandler).Methods("POST")
+	//Read Absent specific day
+	router.HandleFunc("/absent/show/{day}", absentDayHandler).Methods("GET")
+	//Read absent employee
+	router.HandleFunc("/absent/show/employee/{nik}", absentEmployeeHandler).Methods("GET")
 
 	// Handle all preflight request
 	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -205,6 +211,20 @@ func machineLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	sharecode := r.FormValue("sharecode")
 	mch := machine.LoginMachineHub(sharecode)
+	var homeJson = string(data.MustMarshal(mch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func machineRequestCodeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	id := r.FormValue("id")
+	secret := r.FormValue("secret")
+	mch := machine.RequestMachineAccessHub(id, secret)
 	var homeJson = string(data.MustMarshal(mch))
 	_, _ = fmt.Fprint(w, homeJson)
 }
@@ -346,7 +366,47 @@ func listOvertimeDivision(w http.ResponseWriter, r *http.Request) {
 
 }
 
+/*Absent Section
+2019 11 02*/
+func requestAbsentHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	tknclient := r.FormValue("client")
+	tknmachine := r.FormValue("machine")
+	deviceid := r.FormValue("deviceid")
+
+	sch := absent.RequestAbsentHub(tknclient, tknmachine, deviceid)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func absentEmployeeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	params := mux.Vars(r)
+	nik := params["nik"]
+	sch := absent.ReadAbsentByEmployeeHub(nik)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func absentDayHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	params := mux.Vars(r)
+	day := params["day"]
+	sch := absent.ReadAbsentByDaysHub(day)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
 func LogConsoleHttpReq(r *http.Request) {
 	color.Cyan.Println(r.Method + " : " + r.Proto + " [" + r.Host + r.URL.String() +
-		"] Requested by: " + r.RemoteAddr + " At:->" + time.Now().String())
+		"] Requested by: " + r.RemoteAddr + " At:->" + time.Now().Format("Mon, 2 Jan 2006 15:04:05 MST"))
 }

@@ -2,6 +2,7 @@ package data
 
 import (
 	"absensi-server/libs/database"
+	"absensi-server/util/common"
 	"database/sql"
 	"fmt"
 	"math/rand"
@@ -13,6 +14,21 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func init() {
 	con = database.Connect()
+}
+
+func IsMachineAccessOK(id string, secrethash string) bool {
+	secretcode := ""
+	sqlS := `SELECT "SecretCode" FROM "ListMachine" WHERE "ID" = $1`
+	err := con.QueryRow(sqlS, id).Scan(&secretcode)
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+
+	if common.IsPasswordAndHashOk([]byte(secretcode+id), secrethash) {
+		return true
+	}
+	return false
 }
 
 func RandomScheduleID() string {
