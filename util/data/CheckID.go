@@ -2,6 +2,7 @@ package data
 
 import (
 	"absensi-server/libs/database"
+	"absensi-server/util/common"
 	"database/sql"
 	"fmt"
 	"math/rand"
@@ -15,6 +16,21 @@ func init() {
 	con = database.Connect()
 }
 
+func IsMachineAccessOK(id string, secrethash string) bool {
+	secretcode := ""
+	sqlS := `SELECT "SecretCode" FROM "ListMachine" WHERE "ID" = $1`
+	err := con.QueryRow(sqlS, id).Scan(&secretcode)
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+
+	if common.IsPasswordAndHashOk([]byte(secretcode+id), secrethash) {
+		return true
+	}
+	return false
+}
+
 func RandomScheduleID() string {
 	id := GetRandomString(10)
 	if IsScheduleIDNone(id) {
@@ -25,6 +41,30 @@ func RandomScheduleID() string {
 	return ""
 }
 func IsScheduleIDNone(id string) bool {
+	ids := ""
+	sqlS := `SELECT "ID" FROM "ListJadwal" WHERE "ID" = $1`
+	row := con.QueryRow(sqlS, id)
+	switch err := row.Scan(&ids); err {
+	case sql.ErrNoRows:
+		return true
+	case nil:
+		return false
+	default:
+		fmt.Println(err)
+		return true
+	}
+}
+
+func RandomOvertimeID() string {
+	id := GetRandomString(8)
+	if IsOvertimeIDNone(id) {
+		return id
+	} else {
+		RandomOvertimeID()
+	}
+	return ""
+}
+func IsOvertimeIDNone(id string) bool {
 	ids := ""
 	sqlS := `SELECT "ID" FROM "ListJadwal" WHERE "ID" = $1`
 	row := con.QueryRow(sqlS, id)

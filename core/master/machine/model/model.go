@@ -5,3 +5,7 @@ type LoginMachineStr struct {
 	Name      string
 	Secret    string
 }
+type Access struct {
+	ID     string
+	Secret string
+}
