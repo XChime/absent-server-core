@@ -37,6 +37,7 @@ func initRoute() {
 	router.HandleFunc("/", homeHandler)
 	router.HandleFunc("/login/administrator", administratorHandler).Methods("POST")
 	//employee
+	router.HandleFunc("/employee/profile/{token}", employeeProfileHandler).Methods("GET")
 	router.HandleFunc("/login/employee", employeeHandler).Methods("POST")
 	router.HandleFunc("/create/employee", employeeCreateHandler).Methods("POST")
 	router.HandleFunc("/reset/employee", employeeResetHandler).Methods("POST")
@@ -135,6 +136,17 @@ func administratorHandler(w http.ResponseWriter, r *http.Request) {
 
 	emp := user.EmpLoginAdminHub(nik, password)
 	var homeJson = string(data.MustMarshal(emp))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+
+func employeeProfileHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	params := mux.Vars(r)
+	token := params["token"]
+	sch := user.ShowEmployeeProfileHub(token)
+	var homeJson = string(data.MustMarshal(sch))
 	_, _ = fmt.Fprint(w, homeJson)
 }
 
