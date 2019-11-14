@@ -33,3 +33,11 @@ type EmployeeListDetail struct {
 	DivisiName string
 	Divisi     int
 }
+
+type ProfileEmployee struct {
+	NIK        string
+	Nama       string
+	Divisi     int
+	NamaDivisi string
+	Jadwal     string
+}

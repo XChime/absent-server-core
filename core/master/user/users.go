@@ -229,6 +229,29 @@ func GetEmployeeByDivision(div string) (interface{}, string) {
 	return nil, "ERROR !"
 }
 
+func ShowEmployeeProfile(nik string) (interface{}, string) {
+	var niks, name, jadwal, namadivisi string
+	var divisi int
+	sqlS := `SELECT t1."NIK",t1."Nama",t1."Jadwal",t1."Divisi",LD."NamaDivisi" FROM "ListKaryawan" t1 
+    		INNER JOIN "ListDivisi" LD on t1."Divisi" = LD."ID" WHERE "NIK" =$1`
+	err := con.QueryRow(sqlS, nik).Scan(&niks, &name, &jadwal, &divisi, &namadivisi)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, "Error on Fetching!"
+	}
+	if niks != "" {
+		prof := model.ProfileEmployee{
+			NIK:        niks,
+			Nama:       name,
+			Divisi:     divisi,
+			NamaDivisi: namadivisi,
+			Jadwal:     jadwal,
+		}
+		return prof, "Success!"
+	}
+	return nil, "Error occurred!"
+}
+
 func getPassword(nik string) string {
 	var password string
 	sqlStatement := `SELECT "Password" FROM "UserLogin" WHERE "NIK" = $1`

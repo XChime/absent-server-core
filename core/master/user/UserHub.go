@@ -237,3 +237,38 @@ func ChangePasswordHub(nik string, password string) interface{} {
 	}
 	return changes
 }
+
+func ShowEmployeeProfileHub(token string) interface{} {
+	type profile struct {
+		Error   bool
+		Message string
+		Profile interface{}
+	}
+	errs := true
+	msg := ""
+	var data interface{}
+	isOk, dat, msgs := libs.VerifyToken(token)
+	if isOk {
+		jsonString := deta.MustMarshal(dat)
+		var loginData model.AdminData
+		_ = json.Unmarshal(jsonString, &loginData)
+		nik := loginData.NIK
+		if nik != "" {
+			dats, messg := ShowEmployeeProfile(nik)
+			if dats != nil {
+				data = dats
+				errs = false
+			}
+			msg = messg
+		}
+	} else {
+		msg = msgs
+	}
+
+	prof := profile{
+		Error:   errs,
+		Message: msg,
+		Profile: data,
+	}
+	return prof
+}
