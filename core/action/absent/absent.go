@@ -1,3 +1,7 @@
+/*Copyright 2019
+Davin Alfarizky Putra Basudewa <dbasudewa@gmail.com,moshi2_davin@dvnlabs.ml>
+absensi-server corw written in GO
+*/
 package absent
 
 import (
@@ -237,6 +241,7 @@ func InRequest(clientID string, machineID string, deviceID string, dates time.Ti
 		niks := ""
 		date := dates.Format("2006-01-02")
 		inTime := dates.Format("3:04 PM")
+		NotFoundScheduleCount := 0
 		for i := 0; i < len(schedules.Schedule); i++ {
 			da := schedules.Schedule[i]
 			if da.Date == date {
@@ -248,7 +253,12 @@ func InRequest(clientID string, machineID string, deviceID string, dates time.Ti
 				} else {
 					isLate = false
 				}
+			} else {
+				NotFoundScheduleCount += 1
 			}
+		}
+		if NotFoundScheduleCount == len(schedules.Schedule) {
+			return false, "Schedule Not Found!"
 		}
 		status := "IN"
 		if isLate {
@@ -270,6 +280,8 @@ func InRequest(clientID string, machineID string, deviceID string, dates time.Ti
 }
 
 func ReadEmployeeAbsent(nik string) (interface{}, string) {
+	dates := time.Now()
+	monthNow := dates.Month()
 	var status, inmchid, name string
 	var outmchid, info, overtimeid, outdetailid, offset sql.NullString
 	var date, intime time.Time
@@ -280,8 +292,8 @@ func ReadEmployeeAbsent(nik string) (interface{}, string) {
     		INNER JOIN "ListKaryawan" LK on t1."NIK" = LK."NIK"
     		LEFT JOIN "ListOvertime" LO on t1."Overtime" = LO."ID"
     		LEFT JOIN "OutDetails" OD on t1."OutDetailsID" = OD."ID"
-    		WHERE t1."NIK" = $1 ORDER BY t1."Date" DESC`
-	rows, err := con.Query(sqlS, nik)
+    		WHERE t1."NIK" = $1 AND date_part('MONTH', t1."Date") = $2 ORDER BY t1."Date" DESC`
+	rows, err := con.Query(sqlS, nik, monthNow)
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil, "ERROR!"

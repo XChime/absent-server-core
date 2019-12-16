@@ -1,3 +1,7 @@
+/*Copyright 2019
+Davin Alfarizky Putra Basudewa <dbasudewa@gmail.com,moshi2_davin@dvnlabs.ml>
+absensi-server corw written in GO
+*/
 package main
 
 import (
