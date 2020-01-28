@@ -14,6 +14,7 @@ import (
 	"absensi-server/util/data"
 	"fmt"
 	"github.com/gookit/color"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -89,7 +90,9 @@ func initRoute() {
 	router.HandleFunc("/absent/show/{day}", absentDayHandler).Methods("GET")
 	//Read absent employee
 	router.HandleFunc("/absent/show/employee/{nik}", absentEmployeeHandler).Methods("GET")
-
+	headersOk := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	originsOk := handlers.AllowedOrigins([]string{"*"})
+	methodsOk := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
 	// Handle all preflight request
 	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -100,7 +103,7 @@ func initRoute() {
 	})
 	router.StrictSlash(true)
 	color.Warn.Println("Connected to port " + port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+	log.Fatal(http.ListenAndServe(":"+port, handlers.CORS(originsOk, headersOk, methodsOk)(router)))
 
 }
 
@@ -112,7 +115,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		Description string
 	}
 	home := homes{
-		Message:     "2019 (c) Kelompok 2 - All rights reserved",
+		Message:     "2019 - 2020 (c) dvnlabs.ml - All rights reserved",
 		Description: "Absensi Server written by Davin Alfarizky Putra Basudewa",
 	}
 	var homeJson = string(data.MustMarshal(home))
