@@ -8,6 +8,7 @@ import (
 	"absensi-server/core/action/absent"
 	"absensi-server/core/action/overtime"
 	"absensi-server/core/action/schedule"
+	"absensi-server/core/master/division"
 	"absensi-server/core/master/machine"
 	"absensi-server/core/master/user"
 	"absensi-server/libs/database"
@@ -66,6 +67,12 @@ func initRoute() {
 	router.HandleFunc("/employee/schedule/{id}", scheduleEmployeeById).Methods("GET")
 	//Show schedule by division which is valid / not (GRANTED / WAITING)
 	router.HandleFunc("/employee/schedule/{div}/{grant}", scheduleEmployeeByDiv).Methods("GET")
+
+	//Division
+	//Show employee division available
+	router.HandleFunc("/employee/division/show", showDivision).Methods("GET")
+	//Create employee division
+	router.HandleFunc("/employee/division/create", createDivision).Methods("POST")
 
 	//Overtime
 	//Create overtime
@@ -327,6 +334,28 @@ func scheduleEmployeeByDiv(w http.ResponseWriter, r *http.Request) {
 	grant := params["grant"]
 	divI, _ := strconv.Atoi(div)
 	sch := schedule.ScheduleByDivisionHub(divI, grant)
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+func showDivision(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	sch := division.ShowDivisionHub()
+	var homeJson = string(data.MustMarshal(sch))
+	_, _ = fmt.Fprint(w, homeJson)
+}
+func createDivision(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	LogConsoleHttpReq(r)
+
+	if err := r.ParseForm(); err != nil {
+		_, _ = fmt.Fprintf(w, "ParseForm() err: %v", err)
+		return
+	}
+	token := r.FormValue("token")
+	divisions := r.FormValue("nameDivisions")
+	sch := division.CreateDivisionHub(token, divisions)
 	var homeJson = string(data.MustMarshal(sch))
 	_, _ = fmt.Fprint(w, homeJson)
 }
